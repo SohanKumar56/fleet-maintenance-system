@@ -141,10 +141,9 @@ feature/<feature-name>
 
 ## Current Status
 
-- **Tasks 1–3**: ✅ Completed
-- **Task 4**: ✅ Git/GitHub Repository Initialization — Completed
-- **Task 5**: 🔄 MVP-01 User Login — In Progress
-- **Task 6+**: ⏳ Pending
+- **Task 5**: ✅ MVP-01 User Login — Completed
+- **Task 6**: ✅ MVP Fleet Maintenance System — Completed
+- **Task 6 (Dashboard)**: 🔄 Enhanced dashboard with charts — In Progress
 
 ## MVP-01 Implementation
 
