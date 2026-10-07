@@ -66,8 +66,11 @@ yarn-error.log*
 
 # Environment files
 .env
-.env.example
 secrets/
+
+# Allow example environment files
+!.env.example
+!docker/.env.example
 
 # Test coverage
 coverage/
