@@ -4,12 +4,15 @@ import com.abc.fleet.dto.LoginRequest;
 import com.abc.fleet.dto.LoginResponse;
 import com.abc.fleet.entity.Role;
 import com.abc.fleet.exception.AuthenticationException;
+import com.abc.fleet.exception.GlobalExceptionHandler;
 import com.abc.fleet.service.AuthService;
+import com.abc.fleet.service.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,6 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
+@Import(GlobalExceptionHandler.class)
 class AuthControllerTest {
 
     @Autowired
@@ -29,18 +33,20 @@ class AuthControllerTest {
     @MockBean
     private AuthService authService;
 
+    @MockBean
+    private JwtService jwtService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
     @Test
+    @WithMockUser
     void testSuccessfulLogin() throws Exception {
-        // Given
         LoginRequest loginRequest = new LoginRequest("manager1", "manager123");
         LoginResponse loginResponse = new LoginResponse("mock-jwt-token", "manager1", "Test Manager", Role.MANAGER);
 
         when(authService.login(any(LoginRequest.class))).thenReturn(loginResponse);
 
-        // When & Then
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest))
@@ -53,14 +59,13 @@ class AuthControllerTest {
     }
 
     @Test
+    @WithMockUser
     void testLoginWithInvalidCredentials() throws Exception {
-        // Given
         LoginRequest loginRequest = new LoginRequest("manager1", "wrongpassword");
 
         when(authService.login(any(LoginRequest.class)))
                 .thenThrow(new AuthenticationException("Invalid username or password"));
 
-        // When & Then
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest))
@@ -71,11 +76,10 @@ class AuthControllerTest {
     }
 
     @Test
+    @WithMockUser
     void testLoginWithBlankFields() throws Exception {
-        // Given
         LoginRequest loginRequest = new LoginRequest("", "");
 
-        // When & Then
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest))
