@@ -1,4 +1,4 @@
-# Dockerized Fleet Maintenance Management System
+# Fleet Maintenance Management System
 
 ## Project Description
 
@@ -41,6 +41,49 @@ PENDING → ASSIGNED → IN_PROGRESS → COMPLETED
 - **Containerization**: Docker
 - **Web Server**: Nginx
 - **Automation**: Ansible
+
+## Prerequisites
+
+- **Java 8+** (for backend)
+- **Node.js 16+** and npm (for frontend)
+- **MySQL 8.0+** (for database)
+- **Maven 3.6+** (for building Java application)
+
+## Database Setup
+
+1. Install MySQL and start the service
+2. Create the database (it will be created automatically by the application):
+   ```sql
+   -- The application will create the database automatically
+   -- Database name: fleet_maintenance
+   ```
+
+## How to Run
+
+### Backend (Spring Boot)
+```bash
+cd backend/
+mvn spring-boot:run
+```
+The backend server will start on **http://localhost:8080**
+
+### Frontend (React)
+```bash
+cd frontend/
+npm install
+npm run dev
+```
+The frontend will start on **http://localhost:5173**
+
+## Demo Accounts
+
+The system comes with three pre-configured demo accounts:
+
+| Username  | Password    | Role      |
+|-----------|-------------|-----------|
+| manager1  | manager123  | MANAGER   |
+| driver1   | driver123   | DRIVER    |
+| mechanic1 | mechanic123 | MECHANIC  |
 
 ## Project Structure
 
@@ -99,12 +142,32 @@ feature/<feature-name>
 ## Current Status
 
 - **Tasks 1–3**: ✅ Completed
-- **Task 4**: 🔄 Git/GitHub Repository Initialization — In Progress
-- **Task 5+**: ⏳ Pending
+- **Task 4**: ✅ Git/GitHub Repository Initialization — Completed
+- **Task 5**: 🔄 MVP-01 User Login — In Progress
+- **Task 6+**: ⏳ Pending
+
+## MVP-01 Implementation
+
+### What's Implemented
+- ✅ User authentication system with JWT tokens
+- ✅ Role-based login (Manager, Driver, Mechanic)
+- ✅ Password validation using BCrypt
+- ✅ React frontend with role-based routing
+- ✅ Protected routes and navigation
+- ✅ Responsive login interface
+- ✅ Demo user accounts with seeded data
+
+### API Endpoints
+- `POST /api/auth/login` - User authentication
 
 ## Getting Started
 
-This repository is currently in the initialization phase. Implementation of application features, CI/CD pipelines, containerization, and deployment automation will be completed in subsequent tasks.
+1. **Clone the repository**
+2. **Set up MySQL database** (database will be created automatically)
+3. **Start the backend**: `cd backend && mvn spring-boot:run`
+4. **Start the frontend**: `cd frontend && npm install && npm run dev`
+5. **Access the application** at http://localhost:5173
+6. **Login** with one of the demo accounts
 
 ## Contributing
 

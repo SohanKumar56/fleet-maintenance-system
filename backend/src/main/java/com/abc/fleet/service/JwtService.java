@@ -25,46 +25,37 @@ public class JwtService {
     }
 
     public String generateToken(String username, Role role) {
-        Date expiryDate = new Date(System.currentTimeMillis() + jwtExpirationMs);
-
         return Jwts.builder()
-                .setSubject(username)
+                .subject(username)
                 .claim("role", role.name())
-                .setIssuedAt(new Date())
-                .setExpiration(expiryDate)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+                .signWith(getSigningKey())
                 .compact();
     }
 
     public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-
-        return claims.getSubject();
+        return parseClaims(token).getSubject();
     }
 
     public String getRoleFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-
-        return claims.get("role", String.class);
+        return parseClaims(token).get("role", String.class);
     }
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
-                    .build()
-                    .parseClaimsJws(token);
+            parseClaims(token);
             return true;
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }
