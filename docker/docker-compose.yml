@@ -1,0 +1,14 @@
+# Docker Compose configuration will be implemented in Task 12
+# This file will define the multi-container setup for:
+# - Frontend (React.js with Nginx)
+# - Backend (Spring Boot)
+# - Database (MySQL)
+# - Reverse proxy configuration
+
+version: '3.8'
+
+services:
+  # Service definitions will be added in Task 12
+  placeholder:
+    image: hello-world
+    # Remove this placeholder service when implementing actual services
