@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { vehicleService } from '../services/vehicleService';
 import { maintenanceService } from '../services/maintenanceService';
@@ -8,7 +9,13 @@ const TABS = ['My Reports', 'Report Issue'];
 
 export default function DriverPage() {
   const { user, token, logout } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('My Reports');
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="page">
@@ -29,9 +36,16 @@ export default function DriverPage() {
           {user?.fullName}
         </span>
         {TABS.map(t => (
-          <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>
+          <button
+            key={t}
+            id={t === 'My Reports' ? 'tab-my-reports' : 'tab-report-issue'}
+            className={tab === t ? 'active' : ''}
+            onClick={() => setTab(t)}
+          >
+            {t}
+          </button>
         ))}
-        <button className="logout" onClick={logout}>Sign Out</button>
+        <button id="btn-driver-logout" className="logout" onClick={handleLogout}>Sign Out</button>
       </nav>
 
       <h1 id="role-home-heading">Driver Operations</h1>
@@ -104,8 +118,14 @@ function ReportIssue({ token, onDone }) {
     e.preventDefault();
     setErr(''); setMsg('');
     setSubmitting(true);
+    const formData = new FormData(e.target);
+    const payload = {
+      vehicleId: +(formData.get('vehicleId') || form.vehicleId),
+      maintenanceType: formData.get('maintenanceType') || form.maintenanceType || 'CORRECTIVE',
+      issueDescription: formData.get('issueDescription') || form.issueDescription
+    };
     try {
-      await maintenanceService.create({ ...form, vehicleId: +form.vehicleId }, token);
+      await maintenanceService.create(payload, token);
       setMsg('Maintenance report submitted successfully! Redirecting…');
       setTimeout(onDone, 1200);
     } catch (ex) {
@@ -123,8 +143,8 @@ function ReportIssue({ token, onDone }) {
 
       <form className="inline" onSubmit={handleSubmit} style={{ flexDirection:'column', alignItems:'stretch' }}>
         <label>Select Fleet Vehicle
-          <select required value={form.vehicleId}
-            onChange={e => setForm({...form, vehicleId: e.target.value})}>
+          <select id="select-vehicle" name="vehicleId" required value={form.vehicleId}
+            onChange={e => setForm(prev => ({...prev, vehicleId: e.target.value}))}>
             <option value="">— Choose a vehicle from fleet —</option>
             {vehicles.map(v => (
               <option key={v.id} value={v.id}>{v.registrationNumber} — {v.model} ({v.vehicleType})</option>
@@ -133,8 +153,8 @@ function ReportIssue({ token, onDone }) {
         </label>
         
         <label>Maintenance Urgency & Type
-          <select value={form.maintenanceType}
-            onChange={e => setForm({...form, maintenanceType: e.target.value})}>
+          <select id="select-maintenance-type" name="maintenanceType" value={form.maintenanceType}
+            onChange={e => setForm(prev => ({...prev, maintenanceType: e.target.value}))}>
             <option value="PREVENTIVE">PREVENTIVE (Scheduled Service / Inspection)</option>
             <option value="CORRECTIVE">CORRECTIVE (Repair / Fault Fix)</option>
             <option value="EMERGENCY">EMERGENCY (Critical Breakdown)</option>
@@ -142,12 +162,12 @@ function ReportIssue({ token, onDone }) {
         </label>
 
         <label>Detailed Issue Description
-          <textarea required rows={4} value={form.issueDescription}
-            onChange={e => setForm({...form, issueDescription: e.target.value})}
+          <textarea id="textarea-issue-desc" name="issueDescription" required rows={4} value={form.issueDescription}
+            onChange={e => setForm(prev => ({...prev, issueDescription: e.target.value}))}
             placeholder="Please detail abnormal noises, warning indicators, brake/steering issues, fluid leaks…" />
         </label>
         
-        <button type="submit" disabled={submitting} style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
+        <button id="btn-submit-defect" type="submit" disabled={submitting} style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
           {submitting ? 'Submitting…' : 'Submit Defect Report'}
         </button>
       </form>

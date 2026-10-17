@@ -2,7 +2,10 @@ package com.abc.fleet.config;
 
 import com.abc.fleet.entity.Role;
 import com.abc.fleet.entity.User;
+import com.abc.fleet.entity.Vehicle;
+import com.abc.fleet.entity.VehicleStatus;
 import com.abc.fleet.repository.UserRepository;
+import com.abc.fleet.repository.VehicleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -16,6 +19,9 @@ public class DataInitializer implements ApplicationRunner {
     private UserRepository userRepository;
 
     @Autowired
+    private VehicleRepository vehicleRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Override
@@ -27,6 +33,27 @@ public class DataInitializer implements ApplicationRunner {
             createUser("Bob Mechanic", "mechanic1", "mechanic123", Role.MECHANIC);
             
             System.out.println("Sample users created successfully!");
+        }
+
+        if (vehicleRepository.count() == 0) {
+            // Seed initial fleet vehicles
+            Vehicle v1 = new Vehicle();
+            v1.setRegistrationNumber("KA-01-AB-1234");
+            v1.setModel("Volvo FH16");
+            v1.setVehicleType("Heavy Truck");
+            v1.setCurrentMileage(45000);
+            v1.setStatus(VehicleStatus.ACTIVE);
+            vehicleRepository.save(v1);
+
+            Vehicle v2 = new Vehicle();
+            v2.setRegistrationNumber("MH-02-CD-5678");
+            v2.setModel("Tata Prima");
+            v2.setVehicleType("Container Truck");
+            v2.setCurrentMileage(32000);
+            v2.setStatus(VehicleStatus.ACTIVE);
+            vehicleRepository.save(v2);
+
+            System.out.println("Sample vehicles initialized successfully!");
         }
     }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { vehicleService } from '../services/vehicleService';
 import { maintenanceService } from '../services/maintenanceService';
@@ -8,7 +9,13 @@ const TABS = ['Dashboard', 'Vehicles', 'Maintenance'];
 
 export default function ManagerPage() {
   const { user, token, logout } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('Dashboard');
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="page">
@@ -16,7 +23,7 @@ export default function ManagerPage() {
         <div className="nav-brand">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="1" y="3" width="15" height="13"></rect>
-            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
             <circle cx="5.5" cy="18.5" r="2.5"></circle>
             <circle cx="18.5" cy="18.5" r="2.5"></circle>
           </svg>
@@ -27,9 +34,16 @@ export default function ManagerPage() {
           {user?.fullName}
         </span>
         {TABS.map(t => (
-          <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>
+          <button
+            key={t}
+            id={`nav-tab-${t.toLowerCase()}`}
+            className={tab === t ? 'active' : ''}
+            onClick={() => setTab(t)}
+          >
+            {t}
+          </button>
         ))}
-        <button className="logout" onClick={logout}>Sign Out</button>
+        <button id="btn-logout" className="logout" onClick={handleLogout}>Sign Out</button>
       </nav>
 
       {tab === 'Dashboard' && <Dashboard token={token} />}
@@ -92,19 +106,29 @@ function Vehicles({ token }) {
   useEffect(() => { load(); }, [token]);
 
   const handleSearch = () => {
-    if (!query.trim()) { load(); return; }
-    vehicleService.search(query, token).then(setVehicles).catch(e => setErr(e.message));
+    const term = (document.getElementById('input-search-vehicle')?.value ?? query).trim();
+    if (!term) { load(); return; }
+    vehicleService.search(term, token).then(setVehicles).catch(e => setErr(e.message));
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setErr(''); setMsg('');
+    const formData = new FormData(e.target);
+    const payload = {
+      ...form,
+      registrationNumber: formData.get('registrationNumber') || form.registrationNumber,
+      model: formData.get('model') || form.model,
+      vehicleType: formData.get('vehicleType') || form.vehicleType,
+      currentMileage: Number(formData.get('currentMileage') || form.currentMileage || 0),
+      status: formData.get('status') || form.status || 'ACTIVE'
+    };
     try {
       if (form.id) {
-        await vehicleService.update(form.id, form, token);
+        await vehicleService.update(form.id, payload, token);
         setMsg('Vehicle updated successfully.');
       } else {
-        await vehicleService.create(form, token);
+        await vehicleService.create(payload, token);
         setMsg('Vehicle added to fleet successfully.');
       }
       setForm(null);
@@ -119,13 +143,20 @@ function Vehicles({ token }) {
       {msg && <p className="success">{msg}</p>}
 
       <div className="search-bar">
-        <input placeholder="Search by registration number, model, vehicle type…" value={query}
+        <input
+          id="input-search-vehicle"
+          placeholder="Search by registration number, model, vehicle type…"
+          value={query}
           onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()} />
-        <button onClick={handleSearch}>Search</button>
-        <button onClick={() => { setQuery(''); load(); }} style={{ background: '#64748b' }}>Clear</button>
-        <button onClick={() => setForm({ registrationNumber:'', model:'', vehicleType:'', currentMileage:0, status:'ACTIVE' })}
-          style={{ marginLeft:'auto', background:'#16a34a', color:'white' }}>
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
+        />
+        <button id="btn-search-vehicle" onClick={handleSearch}>Search</button>
+        <button id="btn-clear-search" onClick={() => { setQuery(''); load(); }} style={{ background: '#64748b' }}>Clear</button>
+        <button
+          id="btn-add-vehicle"
+          onClick={() => setForm({ registrationNumber:'', model:'', vehicleType:'', currentMileage:0, status:'ACTIVE' })}
+          style={{ marginLeft:'auto', background:'#16a34a', color:'white' }}
+        >
           + Add New Vehicle
         </button>
       </div>
@@ -133,30 +164,60 @@ function Vehicles({ token }) {
       {form && (
         <form className="inline" onSubmit={handleSave}>
           <label>Registration Number
-            <input required placeholder="e.g. KA-01-AB-1234" value={form.registrationNumber}
-              onChange={e => setForm({...form, registrationNumber: e.target.value})} />
+            <input
+              id="input-vehicle-reg"
+              name="registrationNumber"
+              required
+              placeholder="e.g. KA-01-AB-1234"
+              value={form.registrationNumber}
+              onChange={e => setForm(prev => ({...prev, registrationNumber: e.target.value}))}
+            />
           </label>
           <label>Model
-            <input required placeholder="e.g. Volvo FH16" value={form.model}
-              onChange={e => setForm({...form, model: e.target.value})} />
+            <input
+              id="input-vehicle-model"
+              name="model"
+              required
+              placeholder="e.g. Volvo FH16"
+              value={form.model}
+              onChange={e => setForm(prev => ({...prev, model: e.target.value}))}
+            />
           </label>
           <label>Type
-            <input required placeholder="e.g. Heavy Truck" value={form.vehicleType}
-              onChange={e => setForm({...form, vehicleType: e.target.value})} />
+            <input
+              id="input-vehicle-type"
+              name="vehicleType"
+              required
+              placeholder="e.g. Heavy Truck"
+              value={form.vehicleType}
+              onChange={e => setForm(prev => ({...prev, vehicleType: e.target.value}))}
+            />
           </label>
           <label>Mileage (km)
-            <input type="number" min="0" required value={form.currentMileage}
-              onChange={e => setForm({...form, currentMileage: +e.target.value})} />
+            <input
+              id="input-vehicle-mileage"
+              name="currentMileage"
+              type="number"
+              min="0"
+              required
+              value={form.currentMileage}
+              onChange={e => setForm(prev => ({...prev, currentMileage: +e.target.value}))}
+            />
           </label>
           <label>Status
-            <select value={form.status || 'ACTIVE'} onChange={e => setForm({...form, status: e.target.value})}>
+            <select
+              id="select-vehicle-status"
+              name="status"
+              value={form.status || 'ACTIVE'}
+              onChange={e => setForm(prev => ({...prev, status: e.target.value}))}
+            >
               <option value="ACTIVE">ACTIVE</option>
               <option value="MAINTENANCE">MAINTENANCE</option>
               <option value="INACTIVE">INACTIVE</option>
             </select>
           </label>
           <div style={{ display: 'flex', gap: '0.5rem', width: '100%', marginTop: '0.5rem' }}>
-            <button type="submit">{form.id ? 'Save Changes' : 'Create Vehicle'}</button>
+            <button id="btn-save-vehicle" type="submit">{form.id ? 'Save Changes' : 'Create Vehicle'}</button>
             <button type="button" className="cancel" onClick={() => setForm(null)}>Cancel</button>
           </div>
         </form>
@@ -215,8 +276,10 @@ function Maintenance({ token }) {
   const handleAssign = async (e) => {
     e.preventDefault();
     setErr(''); setMsg('');
+    const formEl = e.target;
+    const targetMech = formEl.elements['mechanicUsername']?.value || document.getElementById('input-assign-mechanic')?.value || mechUsername;
     try {
-      await maintenanceService.assign(assignId, mechUsername, token);
+      await maintenanceService.assign(assignId, targetMech.trim(), token);
       setMsg('Mechanic assigned successfully.');
       setAssignId(null); setMechUsername('');
       load();
@@ -239,20 +302,31 @@ function Maintenance({ token }) {
       {msg && <p className="success">{msg}</p>}
 
       <div className="search-bar">
-        <input placeholder="Search maintenance records by description, vehicle reg…" value={query}
+        <input
+          id="input-search-maintenance"
+          placeholder="Search maintenance records by description, vehicle reg…"
+          value={query}
           onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()} />
-        <button onClick={handleSearch}>Search</button>
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
+        />
+        <button id="btn-search-maintenance" onClick={handleSearch}>Search</button>
         <button onClick={() => { setQuery(''); load(); }} style={{ background: '#64748b' }}>Clear</button>
       </div>
 
       {assignId && (
         <form className="inline" onSubmit={handleAssign}>
           <label>Assign to Mechanic (Username)
-            <input required placeholder="e.g. mechanic1" value={mechUsername} onChange={e => setMechUsername(e.target.value)} />
+            <input
+              id="input-assign-mechanic"
+              name="mechanicUsername"
+              required
+              placeholder="e.g. mechanic1"
+              value={mechUsername}
+              onChange={e => setMechUsername(e.target.value)}
+            />
           </label>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="submit">Confirm Assignment</button>
+            <button id="btn-confirm-assign" type="submit">Confirm Assignment</button>
             <button type="button" className="cancel" onClick={() => setAssignId(null)}>Cancel</button>
           </div>
         </form>
@@ -283,12 +357,12 @@ function Maintenance({ token }) {
               <td>{r.assignedTo ? <strong style={{ color: '#475569' }}>{r.assignedTo}</strong> : '—'}</td>
               <td>
                 {r.status === 'OPEN' && (
-                  <button className="btn btn-primary" onClick={() => { setAssignId(r.id); setMechUsername(''); }}>
+                  <button className="btn btn-primary btn-assign-action" onClick={() => { setAssignId(r.id); setMechUsername(''); }}>
                     Assign
                   </button>
                 )}
                 {r.status === 'COMPLETED' && (
-                  <button className="btn btn-success" onClick={() => handleClose(r.id)}>
+                  <button className="btn btn-success btn-close-action" onClick={() => handleClose(r.id)}>
                     Sign & Close
                   </button>
                 )}

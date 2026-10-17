@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { maintenanceService } from '../services/maintenanceService';
 import './shared.css';
 
 export default function MechanicPage() {
   const { user, token, logout } = useAuth();
+  const navigate = useNavigate();
   const [records, setRecords] = useState([]);
   const [err, setErr]   = useState('');
   const [msg, setMsg]   = useState('');
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const load = () =>
     maintenanceService.myJobs(token).then(setRecords).catch(e => setErr(e.message));
@@ -47,7 +54,7 @@ export default function MechanicPage() {
         <span style={{ color: '#64748b', fontSize: '0.88rem', fontWeight: 500, marginRight: '0.75rem' }}>
           {user?.fullName}
         </span>
-        <button className="logout" onClick={logout}>Sign Out</button>
+        <button id="btn-mechanic-logout" className="logout" onClick={handleLogout}>Sign Out</button>
       </nav>
 
       <h1 id="role-home-heading">Technician Work Orders</h1>

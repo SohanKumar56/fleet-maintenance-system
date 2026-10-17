@@ -16,10 +16,11 @@ const LoginPage = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setCredentials({
-      ...credentials,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setCredentials(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleDemoSelect = (username, password) => {
@@ -31,13 +32,17 @@ const LoginPage = () => {
     e.preventDefault();
     setError('');
     
+    const formData = new FormData(e.target);
+    const un = (formData.get('username') || credentials.username || '').trim();
+    const pw = (formData.get('password') || credentials.password || '').trim();
+
     // Client-side validation
-    if (!credentials.username.trim()) {
+    if (!un) {
       setError('Username is required');
       return;
     }
     
-    if (!credentials.password.trim()) {
+    if (!pw) {
       setError('Password is required');
       return;
     }
@@ -45,7 +50,7 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      const userData = await authService.login(credentials);
+      const userData = await authService.login({ username: un, password: pw });
       login(userData);
       
       // Navigate based on role
