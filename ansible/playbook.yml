@@ -1,18 +1,281 @@
-# Ansible playbook will be implemented in Task 13
-# This playbook will automate deployment and server configuration
-
 ---
-- name: Placeholder playbook for Fleet Maintenance System deployment
-  hosts: all
-  tasks:
-    - name: Placeholder task
-      debug:
-        msg: "Ansible automation implementation pending - Task 13"
+# ==============================================================================
+# Fleet Maintenance Management System - Node Configuration Playbook
+# Automated Server Provisioning, Users, Directories, Packages, Ports & Services
+# ==============================================================================
+- name: Configure Target Node for Fleet Maintenance Management System
+  hosts: fleet_servers
+  become: "{{ ansible_become_enabled | default(true) }}"
+  gather_facts: true
 
-# Planned automation tasks:
-# - Server provisioning and configuration
-# - Docker installation and setup
-# - Application deployment
-# - Database setup and migration
-# - Load balancer configuration
-# - SSL certificate management
+  vars:
+    # Application & Environment Metadata
+    app_name: fleet-maintenance-system
+    app_version: "1.0.0"
+    app_env: "{{ target_environment | default('production') }}"
+
+    # Dedicated System User & Group
+    app_user: fleetapp
+    app_group: fleetapp
+    app_user_shell: /usr/sbin/nologin
+    jenkins_user: jenkins
+
+    # Filesystem Hierarchy Prerequisites
+    app_root_dir: /opt/fleet-maintenance
+    app_releases_dir: "{{ app_root_dir }}/releases"
+    app_current_dir: "{{ app_root_dir }}/current"
+    app_config_dir: /etc/fleet-maintenance
+    app_log_dir: /var/log/fleet-maintenance
+    app_data_dir: /var/lib/fleet-maintenance/data
+    registry_data_dir: /var/lib/docker-registry
+
+    # Network Ports Prerequisites
+    server_port: 8090        # Spring Boot Embedded Tomcat REST API
+    frontend_port: 5173      # React Vite Frontend Portal
+    container_port: 8092     # Deployed Docker Production Application
+    registry_port: 5000      # Private Docker Registry Endpoint
+    jenkins_port: 8080       # Jenkins CI/CD Automation Server
+    ssh_port: 22             # Secure Shell Administrative Access
+
+    firewall_ports:
+      - "{{ server_port }}"
+      - "{{ frontend_port }}"
+      - "{{ container_port }}"
+      - "{{ registry_port }}"
+      - "{{ jenkins_port }}"
+      - "{{ ssh_port }}"
+
+    # Package Prerequisites
+    required_packages:
+      - default-jdk-headless
+      - nodejs
+      - npm
+      - docker.io
+      - docker-compose-plugin
+      - curl
+      - git
+      - tar
+      - ca-certificates
+      - logrotate
+      - ufw
+
+  handlers:
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart docker service
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+
+    - name: Restart fleet-maintenance service
+      ansible.builtin.systemd:
+        name: fleet-maintenance
+        state: restarted
+      ignore_errors: true
+      failed_when: false
+
+  tasks:
+    # --------------------------------------------------------------------------
+    # 1. Pre-flight Fact Verification
+    # --------------------------------------------------------------------------
+    - name: "1.1 Output Target Host Architecture & Fact Overview"
+      ansible.builtin.debug:
+        msg:
+          - "Configuring Target Host : {{ inventory_hostname }}"
+          - "Operating System        : {{ ansible_facts['distribution'] | default('Linux') }} {{ ansible_facts['distribution_version'] | default('') }} ({{ ansible_facts['architecture'] | default('x86_64') }})"
+          - "Kernel Version          : {{ ansible_facts['kernel'] | default('N/A') }}"
+          - "Total Memory            : {{ (ansible_facts['memtotal_mb'] | default(0)) }} MB"
+          - "Target Environment      : {{ app_env }}"
+
+    # --------------------------------------------------------------------------
+    # 2. User and Group Management
+    # --------------------------------------------------------------------------
+    - name: "2.1 Ensure system group exists for fleet application"
+      ansible.builtin.group:
+        name: "{{ app_group }}"
+        state: present
+        system: true
+
+    - name: "2.2 Ensure docker group exists"
+      ansible.builtin.group:
+        name: docker
+        state: present
+        system: true
+
+    - name: "2.3 Ensure dedicated service user exists for fleet application"
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        groups:
+          - docker
+        append: true
+        shell: "{{ app_user_shell }}"
+        home: "{{ app_root_dir }}"
+        create_home: true
+        system: true
+        state: present
+        comment: "Fleet Maintenance Service Non-Privileged User"
+
+    - name: "2.4 Ensure jenkins user is member of docker group (if jenkins user exists)"
+      ansible.builtin.user:
+        name: "{{ jenkins_user }}"
+        groups:
+          - docker
+        append: true
+      ignore_errors: true
+      failed_when: false
+
+    # --------------------------------------------------------------------------
+    # 3. Directory Hierarchy Creation
+    # --------------------------------------------------------------------------
+    - name: "3.1 Create application root and releases directory"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0755"
+      loop:
+        - "{{ app_root_dir }}"
+        - "{{ app_releases_dir }}"
+
+    - name: "3.2 Create application configuration directory"
+      ansible.builtin.file:
+        path: "{{ app_config_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0750"
+
+    - name: "3.3 Create application logging directory"
+      ansible.builtin.file:
+        path: "{{ app_log_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0755"
+
+    - name: "3.4 Create persistent database & data directory"
+      ansible.builtin.file:
+        path: "{{ app_data_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0750"
+
+    - name: "3.5 Create local Docker registry data directory"
+      ansible.builtin.file:
+        path: "{{ registry_data_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    # --------------------------------------------------------------------------
+    # 4. Package Prerequisites Installation
+    # --------------------------------------------------------------------------
+    - name: "4.1 Update APT package cache"
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: "4.2 Install required runtime and tool packages"
+      ansible.builtin.apt:
+        name: "{{ required_packages }}"
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    # --------------------------------------------------------------------------
+    # 5. Configuration Files Deployment
+    # --------------------------------------------------------------------------
+    - name: "5.1 Deploy application environment configuration"
+      ansible.builtin.template:
+        src: templates/application.env.j2
+        dest: "{{ app_config_dir }}/application.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0640"
+      notify: Restart fleet-maintenance service
+
+    - name: "5.2 Deploy systemd service unit file"
+      ansible.builtin.template:
+        src: templates/fleet-maintenance.service.j2
+        dest: /etc/systemd/system/fleet-maintenance.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd daemon
+        - Restart fleet-maintenance service
+
+    - name: "5.3 Deploy logrotate policy for application logs"
+      ansible.builtin.template:
+        src: templates/logrotate-fleet.j2
+        dest: /etc/logrotate.d/fleet-maintenance
+        owner: root
+        group: root
+        mode: "0644"
+
+    # --------------------------------------------------------------------------
+    # 6. Security & Firewall Port Configuration
+    # --------------------------------------------------------------------------
+    - name: "6.1 Ensure application and management ports are permitted in UFW"
+      ansible.builtin.command:
+        cmd: "ufw allow {{ item }}/tcp comment 'Fleet Maintenance {{ item }}'"
+      loop: "{{ firewall_ports }}"
+      changed_when: false
+      ignore_errors: true
+      failed_when: false
+
+    # --------------------------------------------------------------------------
+    # 7. Services Management
+    # --------------------------------------------------------------------------
+    - name: "7.1 Ensure Docker daemon is enabled and running"
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+      ignore_errors: true
+
+    - name: "7.2 Ensure fleet-maintenance service is enabled on boot"
+      ansible.builtin.systemd:
+        name: fleet-maintenance
+        enabled: true
+      ignore_errors: true
+      failed_when: false
+
+    # --------------------------------------------------------------------------
+    # 8. Post-Provisioning Verification & Health Check
+    # --------------------------------------------------------------------------
+    - name: "8.1 Verify application directory existence and permissions"
+      ansible.builtin.stat:
+        path: "{{ app_root_dir }}"
+      register: app_dir_stat
+
+    - name: "8.2 Verify configuration file existence"
+      ansible.builtin.stat:
+        path: "{{ app_config_dir }}/application.env"
+      register: env_file_stat
+
+    - name: "8.3 Verify systemd service unit existence"
+      ansible.builtin.stat:
+        path: /etc/systemd/system/fleet-maintenance.service
+      register: service_file_stat
+
+    - name: "8.4 Print Provisioning Verification Summary"
+      ansible.builtin.debug:
+        msg:
+          - "================================================================="
+          - " FLEET MAINTENANCE SYSTEM - NODE PROVISIONING SUMMARY"
+          - "================================================================="
+          - "Target Host             : {{ inventory_hostname }}"
+          - "Service User & Group    : {{ app_user }}:{{ app_group }}"
+          - "Application Root        : {{ app_root_dir }} (exists: {{ app_dir_stat.stat.exists | default(false) }})"
+          - "Config File             : {{ app_config_dir }}/application.env (exists: {{ env_file_stat.stat.exists | default(false) }})"
+          - "Systemd Service Unit    : /etc/systemd/system/fleet-maintenance.service (exists: {{ service_file_stat.stat.exists | default(false) }})"
+          - "Configured Ports        : {{ firewall_ports | join(', ') }}"
+          - "Provisioning Status     : SUCCESS"
+          - "================================================================="

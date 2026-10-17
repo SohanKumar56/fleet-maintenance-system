@@ -1,0 +1,31 @@
+[Unit]
+Description=Fleet Maintenance Management System Service
+Documentation=https://github.com/SohanKumar56/fleet-maintenance-system
+After=network.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ app_user | default('fleetapp') }}
+Group={{ app_group | default('fleetapp') }}
+WorkingDirectory={{ app_root_dir | default('/opt/fleet-maintenance') }}
+EnvironmentFile={{ app_config_dir | default('/etc/fleet-maintenance') }}/application.env
+
+# Execution configuration
+ExecStart=/usr/bin/java -jar {{ app_root_dir | default('/opt/fleet-maintenance') }}/current/fleet-maintenance-backend.jar --server.port={{ server_port | default(8090) }}
+Restart=always
+RestartSec=10
+
+# Resource limitations and sandboxing
+LimitNOFILE=65536
+LimitNPROC=4096
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+# Standard output and logging
+StandardOutput=append:{{ app_log_dir | default('/var/log/fleet-maintenance') }}/service.log
+StandardError=append:{{ app_log_dir | default('/var/log/fleet-maintenance') }}/error.log
+
+[Install]
+WantedBy=multi-user.target

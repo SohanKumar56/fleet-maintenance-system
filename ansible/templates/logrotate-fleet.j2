@@ -1,0 +1,15 @@
+# ==============================================================================
+# Fleet Maintenance Management System - Logrotate Configuration
+# Managed by Ansible - DO NOT EDIT MANUALLY
+# ==============================================================================
+
+{{ app_log_dir | default('/var/log/fleet-maintenance') }}/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+    create 0640 {{ app_user | default('fleetapp') }} {{ app_group | default('fleetapp') }}
+}
