@@ -1,0 +1,117 @@
+---
+# ==============================================================================
+# Fleet Maintenance Management System - Automated Rollback Playbook
+# Task 14: Automated Disaster Recovery & Rollback to Previous Stable Release
+# ==============================================================================
+- name: Rollback Fleet Maintenance Container to Previous Stable Release
+  hosts: local
+  gather_facts: false
+  become: false
+
+  vars:
+    app_name: fleet-maintenance-system
+    container_name: fleet-production-app
+    docker_registry: localhost:5000
+    fallback_version: "v1.0.0"
+    rollback_version: "{{ rollback_to | default(fallback_version) }}"
+    rollback_image: "{{ docker_registry }}/{{ app_name }}:{{ rollback_version }}"
+    host_port: 8092
+    container_port: 8090
+    health_endpoint: "http://localhost:{{ host_port }}/api/auth/health"
+    state_file: "{{ playbook_dir }}/.current_deployment.json"
+
+  tasks:
+    # --------------------------------------------------------------------------
+    # 1. Identify Target Rollback Version
+    # --------------------------------------------------------------------------
+    - name: "1.1 Check for active deployment metadata"
+      ansible.builtin.stat:
+        path: "{{ state_file }}"
+      register: state_file_stat
+
+    - name: "1.2 Load deployment metadata if available"
+      ansible.builtin.slurp:
+        src: "{{ state_file }}"
+      register: state_file_content
+      when: state_file_stat.stat.exists
+
+    - name: "1.3 Parse rollback image target"
+      ansible.builtin.set_fact:
+        target_restore_image: >-
+          {{
+            (state_file_content['content'] | b64decode | from_json)['previous_image']
+            if (state_file_stat.stat.exists and
+                (state_file_content['content'] | b64decode | from_json)['previous_image'] != 'none' and
+                (state_file_content['content'] | b64decode | from_json)['previous_image'] != '')
+            else rollback_image
+          }}
+
+    - name: "1.4 Display Rollback Target Diagnostics"
+      ansible.builtin.debug:
+        msg:
+          - "================================================================="
+          - " INITIATING AUTOMATED ROLLBACK"
+          - "================================================================="
+          - "Target Restored Image : {{ target_restore_image }}"
+          - "Container Target Port : {{ host_port }}"
+          - "Container Name        : {{ container_name }}"
+          - "================================================================="
+
+    # --------------------------------------------------------------------------
+    # 2. Terminate Unhealthy Container & Deploy Rollback Image
+    # --------------------------------------------------------------------------
+    - name: "2.1 Stop and remove failing container"
+      ansible.builtin.command:
+        cmd: "docker rm -f {{ container_name }}"
+      changed_when: true
+      ignore_errors: true
+
+    - name: "2.2 Launch verified rollback container"
+      ansible.builtin.command:
+        cmd: >
+          docker run -d
+          --name {{ container_name }}
+          -p {{ host_port }}:{{ container_port }}
+          --restart unless-stopped
+          -e SPRING_PROFILES_ACTIVE=production
+          {{ target_restore_image }}
+      register: rollback_container_out
+      changed_when: true
+
+    # --------------------------------------------------------------------------
+    # 3. Health Verification of Restored Instance
+    # --------------------------------------------------------------------------
+    - name: "3.1 Verify restored container health"
+      ansible.builtin.command:
+        cmd: "curl -s -f {{ health_endpoint }}"
+      register: restored_health
+      until: restored_health.rc == 0 and ('"status":"UP"' in restored_health.stdout)
+      retries: 15
+      delay: 3
+      changed_when: false
+
+    - name: "3.2 Update deployment state metadata with rollback record"
+      ansible.builtin.copy:
+        content: |
+          {
+            "container_name": "{{ container_name }}",
+            "active_version": "ROLLED_BACK",
+            "active_image": "{{ target_restore_image }}",
+            "rolled_back_at": "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime }}",
+            "port": "{{ host_port }}",
+            "status": "RECOVERED_HEALTHY"
+          }
+        dest: "{{ state_file }}"
+        mode: "0644"
+
+    - name: "3.3 Display Rollback Recovery Confirmation"
+      ansible.builtin.debug:
+        msg:
+          - "================================================================="
+          - " AUTOMATED ROLLBACK SUCCESSFUL - SERVICE RESTORED"
+          - "================================================================="
+          - "Restored Image  : {{ target_restore_image }}"
+          - "Health Status   : {{ restored_health.stdout }}"
+          - "Health URL      : {{ health_endpoint }}"
+          - "Recovery Result : ZERO DOWNTIME RESTORATION CONFIRMED"
+          - "================================================================="

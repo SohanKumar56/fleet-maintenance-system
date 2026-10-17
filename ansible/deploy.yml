@@ -1,0 +1,120 @@
+---
+# ==============================================================================
+# Fleet Maintenance Management System - Continuous Deployment Playbook
+# Task 14: Automated Provisioning, Idempotent Deployment & Health Check
+# ==============================================================================
+- name: Deploy Fleet Maintenance Container to Target Node
+  hosts: local
+  gather_facts: false
+  become: false
+
+  vars:
+    app_name: fleet-maintenance-system
+    container_name: fleet-production-app
+    docker_registry: localhost:5000
+    app_version: "{{ version | default('build-5') }}"
+    target_image: "{{ docker_registry }}/{{ app_name }}:{{ app_version }}"
+    host_port: 8092
+    container_port: 8090
+    health_endpoint: "http://localhost:{{ host_port }}/api/auth/health"
+    state_file: "{{ playbook_dir }}/.current_deployment.json"
+
+  tasks:
+    # --------------------------------------------------------------------------
+    # 1. Inspect Existing Deployment State (for Idempotency Check)
+    # --------------------------------------------------------------------------
+    - name: "1.1 Check if container is already running"
+      ansible.builtin.command:
+        cmd: "docker inspect --format '{{ '{{' }} .State.Status {{ '}}' }}' {{ container_name }}"
+      register: container_status_raw
+      failed_when: false
+      changed_when: false
+
+    - name: "1.2 Check current container image"
+      ansible.builtin.command:
+        cmd: "docker inspect --format '{{ '{{' }} .Config.Image {{ '}}' }}' {{ container_name }}"
+      register: container_image_raw
+      failed_when: false
+      changed_when: false
+
+    - name: "1.3 Determine if deployment state is already satisfied (Idempotency)"
+      ansible.builtin.set_fact:
+        is_already_deployed: "{{ (container_status_raw.stdout | default('')) == 'running' and (container_image_raw.stdout | default('')) == target_image }}"
+        previous_image: "{{ container_image_raw.stdout | default('none') }}"
+
+    - name: "1.4 Display current vs target deployment status"
+      ansible.builtin.debug:
+        msg:
+          - "Target Image       : {{ target_image }}"
+          - "Currently Running  : {{ container_image_raw.stdout | default('NONE') }}"
+          - "Container Status   : {{ container_status_raw.stdout | default('NOT FOUND') }}"
+          - "Idempotent Bypass  : {{ is_already_deployed }}"
+
+    # --------------------------------------------------------------------------
+    # 2. Deploy Container When Not Already at Desired State
+    # --------------------------------------------------------------------------
+    - name: "2.1 Record previous version for automated rollback"
+      ansible.builtin.copy:
+        content: |
+          {
+            "container_name": "{{ container_name }}",
+            "active_version": "{{ app_version }}",
+            "active_image": "{{ target_image }}",
+            "previous_image": "{{ previous_image }}",
+            "deployed_at": "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime }}",
+            "port": "{{ host_port }}"
+          }
+        dest: "{{ state_file }}"
+        mode: "0644"
+      when: not is_already_deployed
+
+    - name: "2.2 Pull target versioned Docker image from registry"
+      ansible.builtin.command:
+        cmd: "docker pull {{ target_image }}"
+      when: not is_already_deployed
+      register: docker_pull_out
+      changed_when: "'Downloaded newer image' in docker_pull_out.stdout or 'Pull complete' in docker_pull_out.stdout"
+
+    - name: "2.3 Stop and remove existing container"
+      ansible.builtin.command:
+        cmd: "docker rm -f {{ container_name }}"
+      when: not is_already_deployed and (container_status_raw.rc == 0)
+      changed_when: true
+
+    - name: "2.4 Launch new application container"
+      ansible.builtin.command:
+        cmd: >
+          docker run -d
+          --name {{ container_name }}
+          -p {{ host_port }}:{{ container_port }}
+          --restart unless-stopped
+          -e SPRING_PROFILES_ACTIVE=production
+          {{ target_image }}
+      when: not is_already_deployed
+      register: docker_run_out
+      changed_when: true
+
+    # --------------------------------------------------------------------------
+    # 3. Health Check Verification
+    # --------------------------------------------------------------------------
+    - name: "3.1 Wait for container application to be healthy"
+      ansible.builtin.command:
+        cmd: "curl -s -f {{ health_endpoint }}"
+      register: health_response
+      until: health_response.rc == 0 and ('"status":"UP"' in health_response.stdout)
+      retries: 15
+      delay: 3
+      changed_when: false
+
+    - name: "3.2 Verify and Parse Health Check Output"
+      ansible.builtin.debug:
+        msg:
+          - "================================================================="
+          - " DEPLOYMENT HEALTH CHECK PASSED"
+          - "================================================================="
+          - "Target Endpoint : {{ health_endpoint }}"
+          - "HTTP Response   : {{ health_response.stdout }}"
+          - "Container Name  : {{ container_name }}"
+          - "Image Running   : {{ target_image }}"
+          - "Status          : HEALTHY (HTTP 200 OK)"
+          - "================================================================="

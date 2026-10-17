@@ -1,0 +1,8 @@
+{
+  "container_name": "fleet-production-app",
+  "active_version": "ROLLED_BACK",
+  "active_image": "localhost:5000/fleet-maintenance-system:build-5",
+  "rolled_back_at": "2026-10-17T14:34:20Z",
+  "port": "8092",
+  "status": "RECOVERED_HEALTHY"
+}
