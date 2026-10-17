@@ -44,9 +44,7 @@ public class AuthenticationTest extends BaseTest {
         wait.until(ExpectedConditions.urlContains("/manager"));
         WebElement heading = waitForVisible(By.id("role-home-heading"));
 
-        // [TASK-10 DELIBERATE DEFECT]: Intentional assertion mismatch to trigger CI test failure
-        assertEquals("Fleet Operations Dashboard [DELIBERATE DEFECT]", heading.getText().trim(),
-                "TASK-10: Intentional defect to demonstrate that test failure stops deployment");
+        assertEquals("Fleet Operations Dashboard", heading.getText().trim());
         assertTrue(driver.findElement(By.cssSelector("button.logout")).isDisplayed());
     }
 
