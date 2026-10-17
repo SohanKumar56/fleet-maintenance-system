@@ -64,10 +64,7 @@ function Dashboard({ token }) {
       .catch(e => setErr(e.message));
   }, [token]);
 
-  if (err) return <p className="error">{err}</p>;
-  if (!data) return <p style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Loading operational metrics…</p>;
-
-  const stats = [
+  const stats = data ? [
     { label: 'Total Vehicles',        num: data.totalVehicles, color: '#2563eb' },
     { label: 'Active Vehicles',       num: data.activeVehicles, color: '#16a34a' },
     { label: 'In Maintenance',        num: data.vehiclesInMaintenance, color: '#d97706' },
@@ -77,19 +74,23 @@ function Dashboard({ token }) {
     { label: 'In Progress',           num: data.inProgressMaintenance, color: '#0284c7' },
     { label: 'Completed',             num: data.completedMaintenance, color: '#16a34a' },
     { label: 'Closed Records',        num: data.closedMaintenance, color: '#64748b' },
-  ];
+  ] : [];
 
   return (
     <>
       <h1 id="role-home-heading">Fleet Operations Dashboard</h1>
-      <div className="stats-grid">
-        {stats.map(s => (
-          <div className="stat-card" key={s.label}>
-            <div className="num" style={{ color: s.color }}>{s.num}</div>
-            <div className="label">{s.label}</div>
-          </div>
-        ))}
-      </div>
+      {err && <p className="error">{err}</p>}
+      {!data && !err && <p style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Loading operational metrics…</p>}
+      {data && (
+        <div className="stats-grid">
+          {stats.map(s => (
+            <div className="stat-card" key={s.label}>
+              <div className="num" style={{ color: s.color }}>{s.num}</div>
+              <div className="label">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }

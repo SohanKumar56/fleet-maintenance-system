@@ -39,8 +39,8 @@ public abstract class BaseTest {
         options.addArguments("--window-size=1920,1080");
 
         driver = new ChromeDriver(options);
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(3));
-        wait = new WebDriverWait(driver, Duration.ofSeconds(8));
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
+        wait = new WebDriverWait(driver, Duration.ofSeconds(15));
     }
 
     @AfterEach
@@ -72,6 +72,15 @@ public abstract class BaseTest {
 
     protected void jsClick(WebElement element) {
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+    }
+
+    protected void submitForm(WebElement submitBtn) {
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
+            "const btn = arguments[0];" +
+            "const form = btn.closest('form');" +
+            "if (form && form.requestSubmit) { form.requestSubmit(btn); } else { btn.click(); }",
+            submitBtn
+        );
     }
 
     protected void setReactInputValue(WebElement element, String value) {

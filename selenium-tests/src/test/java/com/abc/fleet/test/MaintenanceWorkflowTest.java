@@ -23,10 +23,8 @@ public class MaintenanceWorkflowTest extends BaseTest {
         jsClick(reportTab);
 
         // 2. Fill Defect Form
-        WebElement vehicleSelectElem = waitForVisible(By.id("select-vehicle"));
-        wait.until(d -> new Select(vehicleSelectElem).getOptions().size() > 1);
-        Select vehicleSelect = new Select(vehicleSelectElem);
-        vehicleSelect.selectByIndex(1);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#select-vehicle option:nth-child(2)")));
+        new Select(driver.findElement(By.id("select-vehicle"))).selectByIndex(1);
 
         String defectSummary = "Front axle vibration at highway speeds (AutoTest)";
         WebElement descTextarea = waitForVisible(By.id("textarea-issue-desc"));
@@ -56,9 +54,8 @@ public class MaintenanceWorkflowTest extends BaseTest {
         WebElement reportTab = waitForVisible(By.id("tab-report-issue"));
         jsClick(reportTab);
 
-        WebElement vehicleSelectElem = waitForVisible(By.id("select-vehicle"));
-        wait.until(d -> new Select(vehicleSelectElem).getOptions().size() > 1);
-        new Select(vehicleSelectElem).selectByIndex(1);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#select-vehicle option:nth-child(2)")));
+        new Select(driver.findElement(By.id("select-vehicle"))).selectByIndex(1);
 
         String uniqueIssue = "Engine overheating check (LifecycleTest " + System.currentTimeMillis() + ")";
         WebElement descArea = waitForVisible(By.id("textarea-issue-desc"));
@@ -89,8 +86,8 @@ public class MaintenanceWorkflowTest extends BaseTest {
 
         // Verify status changes to ASSIGNED
         waitForVisible(By.cssSelector("p.success"));
-        WebElement updatedRow = waitForVisible(By.xpath("//table//tr[td[contains(text(),'" + uniqueIssue + "')]]"));
-        assertTrue(updatedRow.getText().contains("ASSIGNED"), "Status must update to ASSIGNED");
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+            By.xpath("//table//tr[td[contains(text(),'" + uniqueIssue + "')]]"), "ASSIGNED"));
         logout();
 
         // Step 3: Mechanic Starts and Completes the Job
@@ -103,16 +100,17 @@ public class MaintenanceWorkflowTest extends BaseTest {
 
         // Verify status transitions to IN_PROGRESS
         waitForVisible(By.cssSelector("p.success"));
-        WebElement inProgressRow = waitForVisible(By.xpath("//table//tr[td[contains(text(),'" + uniqueIssue + "')]]"));
-        assertTrue(inProgressRow.getText().contains("IN_PROGRESS"), "Status must update to IN_PROGRESS");
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+            By.xpath("//table//tr[td[contains(text(),'" + uniqueIssue + "')]]"), "IN_PROGRESS"));
 
         // Mark as Complete
+        WebElement inProgressRow = waitForVisible(By.xpath("//table//tr[td[contains(text(),'" + uniqueIssue + "')]]"));
         WebElement completeBtn = inProgressRow.findElement(By.xpath(".//button[contains(text(),'Mark Complete')]"));
         jsClick(completeBtn);
 
         waitForVisible(By.cssSelector("p.success"));
-        WebElement completedRow = waitForVisible(By.xpath("//table//tr[td[contains(text(),'" + uniqueIssue + "')]]"));
-        assertTrue(completedRow.getText().contains("COMPLETED"), "Status must update to COMPLETED");
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+            By.xpath("//table//tr[td[contains(text(),'" + uniqueIssue + "')]]"), "COMPLETED"));
         logout();
 
         // Step 4: Manager Closes the Completed Record
@@ -127,6 +125,8 @@ public class MaintenanceWorkflowTest extends BaseTest {
         jsClick(closeBtn);
 
         waitForVisible(By.cssSelector("p.success"));
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+            By.xpath("//table//tr[td[contains(text(),'" + uniqueIssue + "')]]"), "CLOSED"));
         WebElement closedRow = waitForVisible(By.xpath("//table//tr[td[contains(text(),'" + uniqueIssue + "')]]"));
         assertTrue(closedRow.getText().contains("CLOSED"), "Status must finalize as CLOSED");
     }

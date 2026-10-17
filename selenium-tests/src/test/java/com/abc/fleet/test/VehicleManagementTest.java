@@ -35,14 +35,13 @@ public class VehicleManagementTest extends BaseTest {
         WebElement modelInput = driver.findElement(By.id("input-vehicle-model"));
         WebElement typeInput = driver.findElement(By.id("input-vehicle-type"));
         WebElement mileageInput = driver.findElement(By.id("input-vehicle-mileage"));
-        WebElement submitBtn = driver.findElement(By.id("btn-save-vehicle"));
-
         setReactInputValue(regInput, uniqueReg);
         setReactInputValue(modelInput, "Scania R500");
         setReactInputValue(typeInput, "Heavy Transport");
         setReactInputValue(mileageInput, "24500");
 
-        jsClick(submitBtn);
+        WebElement submitBtn = waitForClickable(By.id("btn-save-vehicle"));
+        submitForm(submitBtn);
 
         // 4. Verify Success Message & Table Presence
         WebElement successBanner = waitForVisible(By.cssSelector("p.success"));
