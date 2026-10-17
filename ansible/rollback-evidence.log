@@ -3,7 +3,7 @@
 # Task 14: Demonstration of Automated Rollback to Previous Stable Release
 # Command: ansible-playbook -i ansible/inventory.ini ansible/rollback.yml
 # Execution Date: October 17, 2026
-# Status: SUCCESS (ok=9, changed=3, failed=0)
+# Status: SUCCESS (ok=10, changed=3, failed=0)
 # ==============================================================================
 
 PLAY [Rollback Fleet Maintenance Container to Previous Stable Release] *********
@@ -17,7 +17,10 @@ ok: [localhost]
 TASK [1.3 Parse rollback image target] *****************************************
 ok: [localhost]
 
-TASK [1.4 Display Rollback Target Diagnostics] *********************************
+TASK [1.4 Resolve target rollback image] ***************************************
+ok: [localhost]
+
+TASK [1.5 Display Rollback Target Diagnostics] *********************************
 ok: [localhost] => {
     "msg": [
         "=================================================================",
@@ -45,6 +48,10 @@ FAILED - RETRYING: [localhost]: 3.1 Verify restored container health (10 retries
 FAILED - RETRYING: [localhost]: 3.1 Verify restored container health (9 retries left).
 FAILED - RETRYING: [localhost]: 3.1 Verify restored container health (8 retries left).
 FAILED - RETRYING: [localhost]: 3.1 Verify restored container health (7 retries left).
+FAILED - RETRYING: [localhost]: 3.1 Verify restored container health (6 retries left).
+FAILED - RETRYING: [localhost]: 3.1 Verify restored container health (5 retries left).
+FAILED - RETRYING: [localhost]: 3.1 Verify restored container health (4 retries left).
+FAILED - RETRYING: [localhost]: 3.1 Verify restored container health (3 retries left).
 ok: [localhost]
 
 TASK [3.2 Update deployment state metadata with rollback record] ***************
@@ -57,7 +64,7 @@ ok: [localhost] => {
         " AUTOMATED ROLLBACK SUCCESSFUL - SERVICE RESTORED",
         "=================================================================",
         "Restored Image  : localhost:5000/fleet-maintenance-system:build-5",
-        "Health Status   : {\"status\":\"UP\",\"version\":\"1.0.0\",\"service\":\"fleet-maintenance-backend\"}",
+        "Health Status   : {\"status\":\"UP\",\"service\":\"fleet-maintenance-backend\",\"version\":\"1.0.0\"}",
         "Health URL      : http://localhost:8092/api/auth/health",
         "Recovery Result : ZERO DOWNTIME RESTORATION CONFIRMED",
         "================================================================="
@@ -65,4 +72,4 @@ ok: [localhost] => {
 }
 
 PLAY RECAP *********************************************************************
-localhost                  : ok=9    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+localhost                  : ok=10   changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0

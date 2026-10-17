@@ -37,16 +37,22 @@
 
     - name: "1.3 Parse rollback image target"
       ansible.builtin.set_fact:
+        deployment_meta: "{{ (state_file_content['content'] | b64decode | from_json) if (state_file_stat.stat.exists and state_file_content is defined and 'content' in state_file_content) else {} }}"
+
+    - name: "1.4 Resolve target rollback image"
+      ansible.builtin.set_fact:
         target_restore_image: >-
           {{
-            (state_file_content['content'] | b64decode | from_json)['previous_image']
-            if (state_file_stat.stat.exists and
-                (state_file_content['content'] | b64decode | from_json)['previous_image'] != 'none' and
-                (state_file_content['content'] | b64decode | from_json)['previous_image'] != '')
-            else rollback_image
+            deployment_meta.previous_image
+            if (deployment_meta.previous_image is defined and deployment_meta.previous_image != 'none' and deployment_meta.previous_image != '')
+            else (
+              deployment_meta.active_image
+              if (deployment_meta.active_image is defined and deployment_meta.active_image != '' and rollback_to is not defined)
+              else rollback_image
+            )
           }}
 
-    - name: "1.4 Display Rollback Target Diagnostics"
+    - name: "1.5 Display Rollback Target Diagnostics"
       ansible.builtin.debug:
         msg:
           - "================================================================="
@@ -97,6 +103,7 @@
             "container_name": "{{ container_name }}",
             "active_version": "ROLLED_BACK",
             "active_image": "{{ target_restore_image }}",
+            "previous_image": "{{ rollback_image }}",
             "rolled_back_at": "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime }}",
             "port": "{{ host_port }}",
             "status": "RECOVERED_HEALTHY"
