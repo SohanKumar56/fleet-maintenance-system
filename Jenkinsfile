@@ -17,6 +17,11 @@ pipeline {
             defaultValue: true,
             description: 'Run automated JUnit unit and service tests before packaging'
         )
+        booleanParam(
+            name: 'RUN_SELENIUM_TESTS',
+            defaultValue: true,
+            description: 'Run automated Selenium WebDriver E2E test suite and quality gate'
+        )
     }
 
     environment {
@@ -85,10 +90,55 @@ pipeline {
             }
         }
 
+        stage('Selenium E2E Tests') {
+            when {
+                expression { return params.RUN_SELENIUM_TESTS }
+            }
+            steps {
+                echo "=========================================================="
+                echo "Stage 4: Automated Selenium E2E Tests & Quality Gate"
+                echo "=========================================================="
+                
+                script {
+                    echo "Checking health of application targets (Backend: 8090, Frontend: 5173)..."
+                    sh '''
+                        # Ensure backend is running
+                        if ! curl -s http://localhost:8090/api/vehicles > /dev/null 2>&1; then
+                            echo "Launching backend Spring Boot application on port 8090..."
+                            nohup java -jar backend/target/${JAR_NAME} --server.port=8090 > backend_e2e.log 2>&1 &
+                            sleep 12
+                        fi
+
+                        # Ensure frontend is running
+                        if ! curl -s http://localhost:5173 > /dev/null 2>&1; then
+                            echo "Serving frontend production assets on port 5173..."
+                            nohup npx -y serve -s frontend/dist -l 5173 > frontend_e2e.log 2>&1 &
+                            sleep 4
+                        fi
+                    '''
+
+                    echo "Executing Selenium WebDriver test suite with Maven..."
+                    dir('selenium-tests') {
+                        sh 'mvn clean test -Dapp.url=http://localhost:5173'
+                    }
+                }
+            }
+            post {
+                always {
+                    echo "Publishing Selenium E2E test reports and archiving screenshots..."
+                    junit testResults: 'selenium-tests/target/surefire-reports/*.xml', allowEmptyResults: true
+                    archiveArtifacts artifacts: 'selenium-tests/screenshots/*.png', allowEmptyArchive: true
+                }
+                failure {
+                    echo "❌ Quality Gate Triggered: Selenium test suite encountered failures! Halting pipeline and blocking deployment."
+                }
+            }
+        }
+
         stage('Deploy') {
             steps {
                 echo "=========================================================="
-                echo "Stage 4: Server Deployment (Tomcat / Nginx)"
+                echo "Stage 5: Server Deployment (Tomcat / Nginx)"
                 echo "Deploying to target environment: ${params.ENVIRONMENT}"
                 echo "=========================================================="
                 
@@ -129,12 +179,13 @@ EOF
     post {
         always {
             echo "Pipeline run completed for build #${env.BUILD_NUMBER}."
+            junit testResults: '**/surefire-reports/*.xml', allowEmptyResults: true
         }
         success {
-            echo "✅ Pipeline successfully built, packaged, and deployed ${env.APP_NAME} to ${params.ENVIRONMENT} on port ${params.SERVER_PORT}."
+            echo "✅ Pipeline successfully verified, packaged, quality-tested, and deployed ${env.APP_NAME} to ${params.ENVIRONMENT}."
         }
         failure {
-            echo "❌ Pipeline failed! Check the console logs for step failure details."
+            echo "❌ Pipeline failed! Quality gate blocked deployment due to errors/failures. Protected target environment: ${params.ENVIRONMENT}."
         }
     }
 }
