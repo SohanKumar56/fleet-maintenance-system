@@ -142,7 +142,7 @@ feature/<feature-name>
 ## Current Status
 
 - **Task 5**: ✅ MVP-01 User Login — Completed
-- **Task 6**: ✅ Vehicle Management, Maintenance Workflow, Dashboard — Completed
+- **Task 6**: ✅ MVP Fleet Maintenance System (Vehicles, Workflow, Dashboard & Git Collaboration) — Completed
 
 ## MVP-01 Implementation
 
