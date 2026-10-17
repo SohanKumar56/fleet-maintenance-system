@@ -21,4 +21,13 @@ public class AuthController {
         LoginResponse response = authService.login(loginRequest);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/health")
+    public ResponseEntity<java.util.Map<String, String>> health() {
+        return ResponseEntity.ok(java.util.Map.of(
+            "status", "UP",
+            "service", "fleet-maintenance-backend",
+            "version", "1.0.0"
+        ));
+    }
 }
