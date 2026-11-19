@@ -21,13 +21,13 @@ export default function DriverPage() {
     <div className="page">
       <nav>
         <div className="nav-brand">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="1" y="3" width="15" height="13"></rect>
             <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
             <circle cx="5.5" cy="18.5" r="2.5"></circle>
             <circle cx="18.5" cy="18.5" r="2.5"></circle>
           </svg>
-          <span>OptiWheels</span>
+          <span>OptiWheels Logistics</span>
           <span className="nav-brand-tag" style={{ background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' }}>
             Driver Portal
           </span>

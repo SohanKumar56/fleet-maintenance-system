@@ -33,6 +33,9 @@ export const maintenanceService = {
     fetch(`${API}/maintenance/search?query=${encodeURIComponent(query)}`,
       { headers: headers(token) }).then(handle),
 
+  getMechanics: (token) =>
+    fetch(`${API}/maintenance/mechanics`, { headers: headers(token) }).then(handle),
+
   assign: (id, mechanicUsername, token) =>
     fetch(`${API}/maintenance/${id}/assign`, {
       method: 'PUT', headers: headers(token),
